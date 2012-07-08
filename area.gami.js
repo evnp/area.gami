@@ -1,5 +1,28 @@
 ;(function ($) {
 
+    var functions = {
+            text: text,
+            line: line,
+            word: word,
+
+            position: position,
+            lineNo:   lineNo,
+            charNo:   charNo,
+
+            lineStart:  lineStart,
+            lineEnd:    lineEnd,
+            lineBefore: lineBefore,
+            lineAfter:  lineAfter,
+
+            wordStart: wordStart,
+            wordEnd:   wordEnd,
+
+            xy: xy,
+            x:  x,
+            y:  y
+        }
+        ;
+
     function text(area) {
         return getText(area);
     }
@@ -9,43 +32,43 @@
     }
 
     function lineBefore(area) {
-        return cache.text(area).substring(0, cache.position(area));
+        return text(area).substring(0, position(area));
     }
 
     function lineAfter(area) {
-        return cache.text(area).substring(cache.position(area));
+        return text(area).substring(position(area));
     }
 
     function lineStart(area) {
-        return cache.before(area).lastIndexOf('\n') + 1;
+        return before(area).lastIndexOf('\n') + 1;
     }
 
     function lineEnd(area) {
-        var after = cache.after(area)
+        var after = after(area)
           , index = after.indexOf('\n');
-        return (index === -1 ? after.length : index) + cache.position(area);
+        return (index === -1 ? after.length : index) + position(area);
     }
 
     function line(area) {
-        return cache.text(area).substring(
-            cache.lineStart(area),
-            cache.lineEnd(area)
+        return text(area).substring(
+            lineStart(area),
+            lineEnd(area)
         );
     }
 
     function lineNo(area) {
-        var newlines = cache.before(area).match(/\n/g);
+        var newlines = before(area).match(/\n/g);
         return newlines ? newlines.length + 1 : 1;
     }
 
     function charNo(area) {
-        return cache.position(area) - cache.lineStart(area);
+        return position(area) - lineStart(area);
     }
 
     function word(area) {
-        var line   = cache.line(area)
-          , lineNo = cache.lineNo(area)
-          , s = e  = cache.charNo(area)
+        var line   = line(area)
+          , lineNo = lineNo(area)
+          , s = e  = charNo(area)
           , chars  = /[a-zA-Z'-]/;
 
         // Get the start and end boundries of the word
@@ -62,6 +85,15 @@
     }
 
     function y(area) {
+    }
+
+    if ($) {
+
+        // Add gami object to jQuery
+        $.fn.gami = function (method) {
+            var textarea = getNativeArea(this);
+            return textarea ? functions[method](textarea) : null;
+        };
     }
 
 /* --- Browser-level - subject to browser incompatabilities --- */
