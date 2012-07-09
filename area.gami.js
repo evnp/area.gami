@@ -5,9 +5,9 @@
             line: line,
             word: word,
 
-            position: position,
-            lineNo:   lineNo,
-            charNo:   charNo,
+            pos:    pos,
+            lineNo: lineNo,
+            charNo: charNo,
 
             lineStart:  lineStart,
             lineEnd:    lineEnd,
@@ -23,59 +23,102 @@
         }
         ;
 
+
+/* --- Base Textarea Properties --- */
+
+    // Position of caret in text
+    function pos(area) {
+        return area.pos || getCaretPosition(area.ta);
+    }
+
+    // Text as string
     function text(area) {
-        return getText(area);
+        return area.text || getText(area.ta);
     }
 
-    function position(area) {
-        return getCaretPosition(area);
+
+/* --- General Textarea Properties --- */
+
+    // Text before caret
+    function before(area) {
+        return text(area).substring(0, pos(area));
     }
 
-    function lineBefore(area) {
-        return text(area).substring(0, position(area));
+    // Text after caret
+    function after(area) {
+        return text(area).substring(pos(area));
     }
 
-    function lineAfter(area) {
-        return text(area).substring(position(area));
-    }
-
-    function lineStart(area) {
-        return before(area).lastIndexOf('\n') + 1;
-    }
-
-    function lineEnd(area) {
-        var after = after(area)
-          , index = after.indexOf('\n');
-        return (index === -1 ? after.length : index) + position(area);
-    }
-
-    function line(area) {
-        return text(area).substring(
-            lineStart(area),
-            lineEnd(area)
-        );
-    }
-
+    // Number of current line
     function lineNo(area) {
-        var newlines = before(area).match(/\n/g);
-        return newlines ? newlines.length + 1 : 1;
+        return lines(before(area)).length;
     }
 
-    function charNo(area) {
-        return position(area) - lineStart(area);
+    // Text of current line before caret
+    function lineBefore(area) {
+        return lines(before(area)).slice(-1);
     }
 
+    // Text of current line after caret
+    function lineAfter(area) {
+        return lines(after(area))[0];
+    }
+
+    // Length of current line
+    function lineLength(area) {
+        return line(area).length;
+    }
+
+    // Position of caret in current line
+    function linePos(area) {
+        return lineBefore(area).length;
+    }
+
+    // Distance from caret to end of current line
+    function lineDist(area) {
+        return lineAfter(area).length;
+    }
+
+
+/* --- Multi-Dependent Textarea Properties --- */
+/*
+ * These properties depend on multiple lower-level
+ * properties; position|text calculated beforehand
+ * so that value can be re-used in each function.
+ */
+
+    // Text and caret position in current line
+    // Passes text
+    function line(area) {
+        area.text = area.text || text(area);
+        return lines(text(area))[lineNo(area)];
+    }
+
+    // Index in text where line starts
+    // Passes position
+    function lineStart(area) {
+        area.pos = area.pos || pos(area);
+        return pos - linePos(area);
+
+    // Index in text where line ends
+    // Passes position
+    function lineEnd(area) {
+        area.pos = area.pos || pos(area);
+        return pos + lineDist(area);
+    }
+
+    // Word at caret position
+    // Passes position and text
     function word(area) {
-        var line   = line(area)
-          , lineNo = lineNo(area)
-          , s = e  = charNo(area)
-          , chars  = /[a-zA-Z'-]/;
+        area.text = area.text || text(area);
+        area.pos  = area.pos  ||  pos(area);
 
-        // Get the start and end boundries of the word
-        while (line[s-1] && chars.test(line[s-1])) s--;
-        while (line[e]   && chars.text(line[e]  )) e++;
+        var before = lineBefore(area)
+          , after  = lineAfter(area)
+          , regex  = /[^a-zA-Z'-']+/;
 
-        return line.substring(s, e);
+        return before.split(regex).slice(-1) +
+                after.split(regex)[0];
     }
 
     function xy(area) {
@@ -87,6 +130,17 @@
     function y(area) {
     }
 
+
+/* -- Utility Functions --- */
+
+    // Text split into lines
+    function lines(text) {
+        return text.split('\n');
+    }
+
+
+/* --- Jquery Support --- */
+
     if ($) {
 
         // Add gami object to jQuery
@@ -97,6 +151,13 @@
     }
 
 /* --- Browser-level - subject to browser incompatabilities --- */
+
+    // Add array last function
+    if(!Array.prototype.last) {
+        Array.prototype.last = function() {
+            return this[this.length - 1];
+        }
+    }
 
     function getNativeArea(el) {
         el = el.jquery ? el.get(0) : el;
