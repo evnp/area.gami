@@ -80,7 +80,7 @@
     }
 
 
-/* --- Multi-Dependent Textarea Properties --- */
+/* --- Multi-Dependant Textarea Properties --- */
 /*
  * These properties depend on multiple lower-level
  * properties; position|text calculated beforehand
@@ -99,6 +99,7 @@
     function lineStart(area) {
         area.pos = area.pos || pos(area);
         return pos - linePos(area);
+    }
 
     // Index in text where line ends
     // Passes position
@@ -128,6 +129,13 @@
     }
 
     function y(area) {
+
+
+/* -- Utility Functions --- */
+
+    // Text split into lines
+    function lines(text) {
+        return text.split('\n');
     }
 
 
