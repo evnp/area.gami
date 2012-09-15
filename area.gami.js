@@ -27,72 +27,52 @@
 /* --- Base Textarea Properties --- */
 
     // Position of caret in text
-    function pos(area) {
-        return area.pos || getCaretPosition(area.ta);
-    }
+
 
     // Text as string
-    function text(area) {
-        return area.text || getText(area.ta);
-    }
+
 
 
 /* --- General Textarea Properties --- */
 
-    // Text before caret
-    function before(area) {
-        return text(area).substring(0, pos(area));
-    }
+// Text
+    // Base properties
+    function text(area) { return area.text || getText(area.ta); }
+    function pos(area)  { return area.pos  || getCaretPosition(area.ta); }
 
-    // Text after caret
-    function after(area) {
-        return text(area).substring(pos(area));
-    }
+    // Text before/after caret
+    function before(area) { return text(area).substring(0, pos(area)); }
+    function after(area)  { return text(area).substring(   pos(area)); }
 
-    // Number of current line
-    function lineNo(area) {
-        return lines(before(area)).length;
-    }
+// Lines
+    function lines(area)   { return toLines(text(area)); }
+    function noLines(area) { return lines(area).length;  }
 
-    // Text of current line before caret
-    function lineBefore(area) {
-        return lines(before(area)).slice(-1);
-    }
+    // Lines until/after caret, including partial current line
+    function beforeLines(area) { return toLines(before(area)); }
+    function afterLines(area)  { return toLines( after(area));  }
 
-    // Text of current line after caret
-    function lineAfter(area) {
-        return lines(after(area))[0];
-    }
+    // Complete lines until/after caret
+    function linesBefore(area) { return beforeLines(area).slice(0, -1); }
+    function linesBefore(area) { return  afterLines(area).slice(1);     }
 
-    // Length of current line
-    function lineLength(area) {
-        return line(area).length;
-    }
-
-    // Position of caret in current line
-    function linePos(area) {
-        return lineBefore(area).length;
-    }
-
-    // Distance from caret to end of current line
-    function lineDist(area) {
-        return lineAfter(area).length;
-    }
-
-
-/* --- Multi-Dependant Textarea Properties --- */
-/*
- * These properties depend on multiple lower-level
- * properties; position|text calculated beforehand
- * so that value can be re-used in each function.
- */
-
-    // Text and caret position in current line
+// Current Line
+    // Text of current line
     // Passes text
     function line(area) {
         area.text = area.text || text(area);
         return lines(text(area))[lineNo(area)];
     }
+
+    function lineNo(area)     { return beforeLines(area).length; }
+
+    // Text of current line before/after caret
+    function lineBefore(area) { return beforeLines(area).slice(-1); }
+    function lineAfter(area)  { return  afterLines(area)[0]; }
+
+    // Position of caret in current line / distance from caret to end of current line
+    function linePos(area)  { return lineBefore(area).length; }
+    function lineDist(area) { return  lineAfter(area).length; }
 
     // Index in text where line starts
     // Passes position
@@ -108,42 +88,119 @@
         return pos + lineDist(area);
     }
 
-    // Word at caret position
+// Words
+    function words(area)   { return toWords(line(area)); }
+    function noWords(area) { return words(area).length;  }
+
+    // Words until/after caret in current line, including partial current word
+    function beforeWords(area) { return toWords(lineBefore(area)); }
+    function afterWords(area)  { return toWords(lineAfter(area));  }
+
+    // Complete words until/after caret in current line
+    function wordsBefore(area) { return beforeWords(area).slice(0, -1); }
+    function wordsAfter(area)  { return afterWords(area).slice(1);      }
+
+    // All words in text
+    function allWords(area)  { return toWords(text(area));   }
+    function wordCount(area) { return allWords(area).length; }
+
+    // Words until/after caret in text, including partial current word
+    function allBeforeWords(area) { return toWords(before(area)); }
+    function allAfterWords(area)  { return toWords(after(area));  }
+
+    // Complete words until/after caret in text
+    function allWordsBefore(area) { return allBeforeWords(area).slice(0, -1); }
+    function allWordsAfter(area)  { return allAfterWords(area).slice(1);      }
+
+// Current Word
+    // Text of current word
     // Passes position and text
     function word(area) {
         area.text = area.text || text(area);
         area.pos  = area.pos  ||  pos(area);
-
-        var before = lineBefore(area)
-          , after  = lineAfter(area)
-          , regex  = /[^a-zA-Z'-']+/;
-
-        return before.split(regex).slice(-1) +
-                after.split(regex)[0];
+        return wordBefore(area) + wordAfter(area);
     }
 
-    function xy(area) {
+    // Text of current word before/after caret
+    function wordBefore(area) { return beforeWords(area).slice(-1); }
+    function wordAfter(area)  { return  afterWords(area)[0];        }
+
+    // Position of caret in current word / distance from caret to end of current word
+    function wordPos(area)  { return wordBefore(area).length; }
+    function wordDist(area) { return  wordAfter(area).length; }
+
+    // Index in text where word starts
+    // Passes position
+    function wordStart(area) {
+        area.pos = area.pos || pos(area);
+        return pos - wordPos(area);
     }
 
-    function x(area) {
+    // Index in text where word ends
+    // Passes position
+    function wordEnd(area) {
+        area.pos = area.pos || pos(area);
+        return pos + wordDist(area);
     }
 
-    function y(area) {
+    // Index in line where word starts
+    // Passes position
+    function lineWordStart(area) {
+        area.pos = area.pos || pos(area);
+        return linePos(area) - wordPos(area);
+    }
 
+    // Index in line where word ends
+    // Passes position
+    function lineWordEnd(area) {
+        area.pos = area.pos || pos(area);
+        return linePos(area) + wordDist(area);
+    }
+
+// Pixel Position
+    function XY(area) {
+        var beforeLines = beforeLines(area)
+          , lineBefore =  beforeLines.splice(-1)
+
+          , areaWidth = area.width
+          , width = $('#copy').html(lineBefore).width
+
+          , rmndr = width % areaWidth
+          , wraps = (areaWidth - rmndr) / width;
+
+        return {
+            x: rmndr
+            y: (beforeLines.length + wraps) * lineHeight,
+            // TODO: this needs to account for the wraps in every line
+    }
+
+    function lineXY(area) {
+    }
+
+    function lineEndXY(area) {
+    }
+
+    function wordXY(area) {
+    }
+
+    function wordEndXY(area) {
+    }
 
 /* -- Utility Functions --- */
 
-    // Text split into lines
-    function lines(text) {
+    // Split into lines
+    function toLines(text) {
         return text.split('\n');
     }
 
+    // Split into words
+    function toWords(text) {
+        return text.split(/[^a-zA-Z-']+/)
+    }
 
-/* -- Utility Functions --- */
+    // Get pixel coordinates from linesBefore and offset
+    function toXY(text, position) {
 
-    // Text split into lines
-    function lines(text) {
-        return text.split('\n');
     }
 
 
