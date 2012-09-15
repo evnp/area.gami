@@ -158,33 +158,35 @@
     }
 
 // Pixel Position
-    function XY(area) {
-        var beforeLines = beforeLines(area)
-          , lineBefore =  beforeLines.splice(-1)
+    function XY(area, xPos) {
+        var lines = beforeLines(area)
+          , copy  = getCopyDiv(area)
+          , width = area.width
+          , wraps = 0, last;
 
-          , areaWidth = area.width
-          , width = $('#copy').html(lineBefore).width
+        lines.forEach( function(line) {
+            wraps += Math.ceil(width / getTextLength(line, copy));
+        });
 
-          , rmndr = width % areaWidth
-          , wraps = (areaWidth - rmndr) / width;
+        if (!xPos || xPos.indexOf('line') === -1) {
+            last = lines.slice(-1);
+            last = xPos === 'wordStart' ? last.slice(0, -wordPos(area)) :
+                   xPos === 'wordEnd'   ? last + wordAfter(area) : last ;
+        }
 
         return {
-            x: rmndr
-            y: (beforeLines.length + wraps) * lineHeight,
-            // TODO: this needs to account for the wraps in every line
+            x: xPos === 'lineStart' ? 0 :
+               xPos === 'lineEnd'   ? width :
+               (getTextLength(last, copy) % width),
+            y: wraps * lineHeight
+        };
     }
 
-    function lineXY(area) {
-    }
+    function lineXY(area)    { return XY(area, 'lineStart'); }
+    function lineEndXY(area) { return XY(area, 'lineEnd');   }
 
-    function lineEndXY(area) {
-    }
-
-    function wordXY(area) {
-    }
-
-    function wordEndXY(area) {
-    }
+    function wordXY(area)    { return XY(area, 'wordStart'); }
+    function wordEndXY(area) { return XY(area, 'wordEnd');   }
 
 /* -- Utility Functions --- */
 
@@ -195,12 +197,7 @@
 
     // Split into words
     function toWords(text) {
-        return text.split(/[^a-zA-Z-']+/)
-    }
-
-    // Get pixel coordinates from linesBefore and offset
-    function toXY(text, position) {
-
+        return text.split(/[\W]+/)
     }
 
 
@@ -234,7 +231,6 @@
         // TODO: test getText for browser compaareability
         return area.value;
     }
-
 
     function getCaretPosition(area) {
         var position = 0;
@@ -287,9 +283,16 @@
                area.selectionStart !== area.selectionEnd;
     }
 
-    // TODO: convert not to use jQuery
-    function getTextWidth(text) {
-        return this.$('#line-copy').html(text).width();
+    function getCopyDiv(area) {
+        return document.getElementById('gami-copy') || (
+            area.parentNode.innerHTML += '<div id="gami-copy"></div>',
+            getCopyDiv(area)
+        );
+    }
+
+    function getTextLength(text, copyDiv) {
+        copyDiv.innerHTML = text;
+        return copyDiv.offsetWidth;
     }
 
 // Use window.jQuery to avoid ReferenceError when jQuery is not defined
