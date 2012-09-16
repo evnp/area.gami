@@ -1,9 +1,16 @@
 ;(function ($) {
 
+    var lineHeight = 12; //Default
+
+// Setup
+    function setLineHeight(val) {
+        lineHeight = val;
+    }
+
 // Text
     // Base properties
-    function text(area) { return area.text || getText(area.ta); }
-    function pos(area)  { return area.pos  || getCaretPosition(area.ta); }
+    function text(area) { return area.text || getText(area); }
+    function pos(area)  { return area.pos  || getCaretPosition(area); }
 
     // Text before/after caret
     function before(area) { return text(area).substring(0, pos(area)); }
@@ -15,25 +22,25 @@
 
     // Lines until/after caret, including partial current line
     function beforeLines(area) { return toLines(before(area)); }
-    function afterLines(area)  { return toLines( after(area));  }
+    function afterLines(area)  { return toLines(after(area));  }
 
     // Complete lines until/after caret
-    function linesBefore(area) { return beforeLines(area).slice(0, -1); }
-    function linesAfter(area)  { return  afterLines(area).slice(1);     }
+    function linesBefore(area) { return beforeLines(area).allButLast(); }
+    function linesAfter(area)  { return afterLines(area).allButFirst(); }
 
 // Current Line
     // Text of current line
     // Passes text
     function line(area) {
         area.text = area.text || text(area);
-        return lines(text(area))[lineNo(area)];
+        return toLines(text(area))[lineNum(area)];
     }
 
-    function lineNum(area)     { return beforeLines(area).length; }
+    function lineNum(area) { return linesBefore(area).length; }
 
     // Text of current line before/after caret
-    function lineBefore(area) { return beforeLines(area).slice(-1); }
-    function lineAfter(area)  { return  afterLines(area)[0]; }
+    function lineBefore(area) { return beforeLines(area).last();  }
+    function lineAfter(area)  { return  afterLines(area).first(); }
 
     // Position of caret in current line / distance from caret to end of current line
     function linePos(area)  { return lineBefore(area).length; }
@@ -62,8 +69,8 @@
     function afterWords(area)  { return toWords(lineAfter(area));  }
 
     // Complete words until/after caret in current line
-    function wordsBefore(area) { return beforeWords(area).slice(0, -1); }
-    function wordsAfter(area)  { return afterWords(area).slice(1);      }
+    function wordsBefore(area) { return beforeWords(area).allButLast(); }
+    function wordsAfter(area)  { return afterWords(area).allButFirst(); }
 
     // All words in text
     function allWords(area)  { return toWords(text(area));   }
@@ -74,8 +81,8 @@
     function allAfterWords(area)  { return toWords(after(area));  }
 
     // Complete words until/after caret in text
-    function allWordsBefore(area) { return allBeforeWords(area).slice(0, -1); }
-    function allWordsAfter(area)  { return allAfterWords(area).slice(1);      }
+    function allWordsBefore(area) { return allBeforeWords(area).allButLast(); }
+    function allWordsAfter(area)  { return allAfterWords(area).allButFirst(); }
 
 // Current Word
     // Text of current word
@@ -87,8 +94,8 @@
     }
 
     // Text of current word before/after caret
-    function wordBefore(area) { return beforeWords(area).slice(-1); }
-    function wordAfter(area)  { return  afterWords(area)[0];        }
+    function wordBefore(area) { return beforeWords(area).last();  }
+    function wordAfter(area)  { return  afterWords(area).first(); }
 
     // Position of caret in current word / distance from caret to end of current word
     function wordPos(area)  { return wordBefore(area).length; }
@@ -153,16 +160,30 @@
     function wordXY(area)    { return XY(area, 'wordStart'); }
     function wordEndXY(area) { return XY(area, 'wordEnd');   }
 
+
 /* -- Utility Functions --- */
 
     // Split into lines
     function toLines(text) {
-        return text.split('\n');
+        return separate(text, '\n');
     }
 
     // Split into words
     function toWords(text) {
-        return text.split(/[\W]+/)
+        return separate(text, /\W+/);
+    }
+
+    // Split, excluding the last entry if it is empty
+    function separate(text, on) {
+        return (text = text.split(on)).last() ? text : text.allButLast();
+    }
+
+    // Add array first/last functions
+    if(!Array.prototype.last) {
+        Array.prototype.first = function() { return this[0]; };
+        Array.prototype.last  = function() { return this[this.length - 1]; };
+        Array.prototype.allButFirst = function() { return this.slice(1); };
+        Array.prototype.allButLast  = function() { return this.slice(0, -1) };
     }
 
 
@@ -184,10 +205,12 @@
 
             line:       line,
             lineNum:    lineNum,
-            beforeLine: beforeLine,
-            afterLine:  afterLine,
             lineBefore: lineBefore,
             lineAfter:  lineAfter,
+            linePos:    linePos,
+            lineDist:   lineDist,
+            lineStart:  lineStart,
+            lineEnd:    lineEnd,
 
             words:          words,
             numWords:       numWords,
@@ -222,23 +245,25 @@
         // Add gami object to jQuery
         $.fn.gami = function (method) {
             var textarea = getNativeArea(this);
+            textarea.area = textarea.pos = null; // reset cache
+            console.log(getLineHeight(textarea));
             return textarea ? functions[method](textarea) : null;
         };
     }
 
-/* --- Browser-level - subject to browser incompatabilities --- */
 
-    // Add array last function
-    if(!Array.prototype.last) {
-        Array.prototype.last = function() {
-            return this[this.length - 1];
-        }
-    }
+/* --- Browser-level - subject to browser incompatabilities --- */
 
     function getNativeArea(el) {
         el = el.jquery ? el.get(0) : el;
         return (el && el instanceof HTMLElement &&
-               (el.nodeName.toLowerCase === 'textarea')) ? el : null;
+               (el.nodeName.toLowerCase() === 'textarea')) ? el : null;
+    }
+
+
+    function getLineHeight(area) {
+        return parseInt(window.getComputedStyle(area, null
+                             ).getPropertyValue('line-height'));
     }
 
     function getText(area) {
