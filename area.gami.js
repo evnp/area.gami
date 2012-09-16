@@ -1,40 +1,5 @@
 ;(function ($) {
 
-    var functions = {
-            text: text,
-            line: line,
-            word: word,
-
-            pos:    pos,
-            lineNo: lineNo,
-            charNo: charNo,
-
-            lineStart:  lineStart,
-            lineEnd:    lineEnd,
-            lineBefore: lineBefore,
-            lineAfter:  lineAfter,
-
-            wordStart: wordStart,
-            wordEnd:   wordEnd,
-
-            xy: xy,
-            x:  x,
-            y:  y
-        }
-        ;
-
-
-/* --- Base Textarea Properties --- */
-
-    // Position of caret in text
-
-
-    // Text as string
-
-
-
-/* --- General Textarea Properties --- */
-
 // Text
     // Base properties
     function text(area) { return area.text || getText(area.ta); }
@@ -45,8 +10,8 @@
     function after(area)  { return text(area).substring(   pos(area)); }
 
 // Lines
-    function lines(area)   { return toLines(text(area)); }
-    function noLines(area) { return lines(area).length;  }
+    function lines(area)    { return toLines(text(area)); }
+    function numLines(area) { return lines(area).length;  }
 
     // Lines until/after caret, including partial current line
     function beforeLines(area) { return toLines(before(area)); }
@@ -54,7 +19,7 @@
 
     // Complete lines until/after caret
     function linesBefore(area) { return beforeLines(area).slice(0, -1); }
-    function linesBefore(area) { return  afterLines(area).slice(1);     }
+    function linesAfter(area)  { return  afterLines(area).slice(1);     }
 
 // Current Line
     // Text of current line
@@ -64,7 +29,7 @@
         return lines(text(area))[lineNo(area)];
     }
 
-    function lineNo(area)     { return beforeLines(area).length; }
+    function lineNum(area)     { return beforeLines(area).length; }
 
     // Text of current line before/after caret
     function lineBefore(area) { return beforeLines(area).slice(-1); }
@@ -90,7 +55,7 @@
 
 // Words
     function words(area)   { return toWords(line(area)); }
-    function noWords(area) { return words(area).length;  }
+    function numWords(area) { return words(area).length;  }
 
     // Words until/after caret in current line, including partial current word
     function beforeWords(area) { return toWords(lineBefore(area)); }
@@ -204,6 +169,55 @@
 /* --- Jquery Support --- */
 
     if ($) {
+        var functions = {
+            text:   text,
+            pos:    pos,
+            before: before,
+            after:  after,
+
+            lines:       lines,
+            numLines:    numLines,
+            beforeLines: beforeLines,
+            afterLines:  afterLines,
+            linesBefore: linesBefore,
+            linesAfter:  linesAfter,
+
+            line:       line,
+            lineNum:    lineNum,
+            beforeLine: beforeLine,
+            afterLine:  afterLine,
+            lineBefore: lineBefore,
+            lineAfter:  lineAfter,
+
+            words:          words,
+            numWords:       numWords,
+            beforeWords:    beforeWords,
+            afterWords:     afterWords,
+            wordsBefore:    wordsBefore,
+            wordsAfter:     wordsAfter,
+            allWords:       allWords,
+            wordCount:      wordCount,
+            allBeforeWords: allBeforeWords,
+            allAfterWords:  allAfterWords,
+            allWordsBefore: allWordsBefore,
+            allWordsAfter:  allWordsAfter,
+
+            word:          word,
+            wordBefore:    wordBefore,
+            wordAfter:     wordAfter,
+            wordPos:       wordPos,
+            wordDist:      wordDist,
+            wordStart:     wordStart,
+            wordEnd:       wordEnd,
+            lineWordStart: lineWordStart,
+            lineWordEnd:   lineWordEnd,
+
+            XY:        XY,
+            lineXY:    lineXY,
+            lineEndXY: lineEndXY,
+            wordXY:    wordXY,
+            wordEndXY: wordEndXY
+        };
 
         // Add gami object to jQuery
         $.fn.gami = function (method) {

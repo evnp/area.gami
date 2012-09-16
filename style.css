@@ -1,0 +1,8 @@
+textarea {
+    margin: 12px;
+    padding: 4px;
+    font: 16px/16px Helvetica, helvetica, sans-serif;
+    font-weight: 300;
+    width: 500px;
+    height: 300px;
+}
