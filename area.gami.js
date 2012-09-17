@@ -130,29 +130,48 @@
     }
 
 // Pixel Position
-    function XY(area, xPos) {
+    function X(area, pos) {
         var lines = beforeLines(area)
-          , copy  = getCopyDiv(area)
-          , width = area.width
-          , wraps = 0, last;
+          , last  = pos === 'lineEnd' ? line(area) : lines.last()
+          , width = getWidth(area)
+          , wraps = i = 0, length, last, words, word, space, spaces;
 
-        lines.forEach( function(line) {
-            wraps += Math.ceil(width / getTextLength(line, copy));
-        });
+        if (!last) pos = 'lineStart';
+        if (pos !== 'lineStart') {
+            last = pos === 'wordStart' ? last.slice(0, -wordPos(area)) :
+                   pos === 'wordEnd'   ? last + wordAfter(area) : last ;
 
-        if (!xPos || xPos.indexOf('line') === -1) {
-            last = lines.slice(-1);
-            last = xPos === 'wordStart' ? last.slice(0, -wordPos(area)) :
-                   xPos === 'wordEnd'   ? last + wordAfter(area) : last ;
+            copy = getCopyDiv(area, false);
+            space = /\W+/g;
+            words  = last.split(space);
+            spaces = last.match(space);
+            last = '';
+
+            do {
+                word  = words[i];
+                space = spaces && spaces[i] || '' ;
+
+                // if this is word at cursor, append word after cursor
+                if (pos !== lineEnd)
+                    word += (words[i] === words.last() ?
+                             wordAfter(area) : '');
+
+                length = getTextLength(last += word + space, copy);
+
+                if (length > width) i--, last = '';
+            } while (words[++i]);
+
+            length = getTextLength(last.replace(word, words.last()), copy);
         }
 
-        return {
-            x: xPos === 'lineStart' ? 0 :
-               xPos === 'lineEnd'   ? width :
-               (getTextLength(last, copy) % width),
-            y: wraps * lineHeight
-        };
+        return pos === 'lineStart' ? 0 : length ;
     }
+
+    function Y(area) {
+        return getTextHeight(before(area), getCopyDiv(area, true));
+    }
+
+    function XY(area) { return { x: X(area), y: Y(area) }; }
 
     function lineXY(area)    { return XY(area, 'lineStart'); }
     function lineEndXY(area) { return XY(area, 'lineEnd');   }
@@ -165,7 +184,7 @@
 
     // Split into lines
     function toLines(text) {
-        return separate(text, '\n');
+        return text.split('\n');
     }
 
     // Split into words
@@ -178,13 +197,10 @@
         return (text = text.split(on)).last() ? text : text.allButLast();
     }
 
-    // Add array first/last functions
-    if(!Array.prototype.last) {
-        Array.prototype.first = function() { return this[0]; };
-        Array.prototype.last  = function() { return this[this.length - 1]; };
-        Array.prototype.allButFirst = function() { return this.slice(1); };
-        Array.prototype.allButLast  = function() { return this.slice(0, -1) };
-    }
+    Array.prototype.first = function() { return this[0]; };
+    Array.prototype.last  = function() { return this[this.length - 1]; };
+    Array.prototype.allButFirst = function() { return this.slice(1); };
+    Array.prototype.allButLast  = function() { return this.slice(0, -1) };
 
 
 /* --- Jquery Support --- */
@@ -235,6 +251,7 @@
             lineWordStart: lineWordStart,
             lineWordEnd:   lineWordEnd,
 
+            X: X,      Y: Y,
             XY:        XY,
             lineXY:    lineXY,
             lineEndXY: lineEndXY,
@@ -246,7 +263,6 @@
         $.fn.gami = function (method) {
             var textarea = getNativeArea(this);
             textarea.area = textarea.pos = null; // reset cache
-            console.log(getLineHeight(textarea));
             return textarea ? functions[method](textarea) : null;
         };
     }
@@ -322,16 +338,43 @@
                area.selectionStart !== area.selectionEnd;
     }
 
-    function getCopyDiv(area) {
-        return document.getElementById('gami-copy') || (
-            area.parentNode.innerHTML += '<div id="gami-copy"></div>',
-            getCopyDiv(area)
-        );
+    function getCopyDiv(area, wordWrap) {
+        var div;
+        if (!(div = document.getElementById('gami-copy'))) {
+            div = document.createElement('div');
+
+            div.setAttribute('id', 'gami-copy');
+            div.style.visibility = 'hidden';
+
+            // Make sure copy uses same font attrs as textarea
+            div.style.font = window.getComputedStyle(area,null
+                                  ).getPropertyValue('font');
+
+            area.parentNode.appendChild(div);
+        }
+
+        div.style.width   = wordWrap ? getWidth(area) + 'px' : 'auto';
+        div.style.display = wordWrap ? 'block' : 'inline-block';
+        return div;
+    }
+
+    function getTextHeight(text, copyDiv) {
+        text = text.replace('\n', '<br>');
+
+        // Handle cases where cursor is at start of line
+        if (!text || /<br>\W*$/.test(text)) text += '.';
+
+        copyDiv.innerHTML = text;
+        return copyDiv.offsetHeight;
     }
 
     function getTextLength(text, copyDiv) {
         copyDiv.innerHTML = text;
-        return copyDiv.offsetWidth;
+        return getWidth(copyDiv);
+    }
+
+    function getWidth(area) {
+        return area.offsetWidth;
     }
 
 // Use window.jQuery to avoid ReferenceError when jQuery is not defined
