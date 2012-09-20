@@ -1,12 +1,5 @@
 ;(function ($) {
 
-    var lineHeight = 12; //Default
-
-// Setup
-    function setLineHeight(val) {
-        lineHeight = val;
-    }
-
 // Text
     // Base properties
     function text(area) { return area.text || getText(area); }
@@ -131,47 +124,65 @@
 
 // Pixel Position
     function X(area, pos) {
-        var lines = beforeLines(area)
-          , last  = pos === 'lineEnd' ? line(area) : lines.last()
-          , width = getWidth(area)
-          , wraps = i = 0, length, last, words, word, space, spaces;
+        var line = pos === 'lineEnd' ? line(area) : lineBefore(area);
 
-        if (!last) pos = 'lineStart';
-        if (pos !== 'lineStart') {
-            last = pos === 'wordStart' ? last.slice(0, -wordPos(area)) :
-                   pos === 'wordEnd'   ? last + wordAfter(area) : last ;
+        // If cursor is at start of line, or user selected lineStart
+        if (!line || pos === 'lineStart') return 0;
 
-            copy = getCopyDiv(area, false);
-            space = /\W+/g;
-            words  = last.split(space);
-            spaces = last.match(space);
-            last = '';
+        // If the cursor is at the beginning of word
+        if (wordPos(area) === 0) pos = 'wordStart';
 
-            do {
-                word  = words[i];
-                space = spaces && spaces[i] || '' ;
+        // Adjust line to word start if necessary
+        else if (pos === 'wordStart')
+            line = line.slice(0, -wordPos(area));
 
-                // if this is word at cursor, append word after cursor
-                if (pos !== lineEnd)
-                    word += (words[i] === words.last() ?
-                             wordAfter(area) : '');
+        // Adjust line to word end if necessary
+        if (pos === 'wordEnd') line = line + wordAfter(area);
 
-                length = getTextLength(last += word + space, copy);
+        var copy   = getCopyDiv(area, false)
+          , width  = getWidth(area)
+          , space  = /\W+/g
+          , words  = line.split(space)
+          , spaces = line.match(space)
+          , i = 0;
 
-                if (length > width) i--, last = '';
-            } while (words[++i]);
+        console.log(pos);
+        console.log(line);
 
-            length = getTextLength(last.replace(word, words.last()), copy);
-        }
+        line = '';
 
-        return pos === 'lineStart' ? 0 : length ;
+
+        console.log(words);
+
+        do {
+            word  = words[i];
+            space = spaces && spaces[i] || '' ;
+
+            // if this is word at cursor, append word after cursor
+            if (!pos) // to maintain correct wrapping
+                word += (words[i] === words.last() ?
+                         wordAfter(area) : '');
+
+            length = getTextLength(line += word + space, copy);
+
+            if (length > width) i--, line = '';
+        } while (words[++i]);
+
+        // If the cursor was in the middle of the word,
+        // get text width with partial instead of full word
+        if (!pos) length = getTextLength(
+            line.replace(word, words.last()), copy
+        );
+
+        return length;
     }
 
     function Y(area) {
         return getTextHeight(before(area), getCopyDiv(area, true));
     }
 
-    function XY(area) { return { x: X(area), y: Y(area) }; }
+    function XY(area, pos) { return { x: X(area, pos),
+                                      y: 20 }}//Y(area) }; }
 
     function lineXY(area)    { return XY(area, 'lineStart'); }
     function lineEndXY(area) { return XY(area, 'lineEnd');   }
@@ -189,7 +200,7 @@
 
     // Split into words
     function toWords(text) {
-        return separate(text, /\W+/);
+        return text.split(/\W+/);
     }
 
     // Split, excluding the last entry if it is empty
@@ -260,10 +271,18 @@
         };
 
         // Add gami object to jQuery
-        $.fn.gami = function (method) {
-            var textarea = getNativeArea(this);
-            textarea.area = textarea.pos = null; // reset cache
-            return textarea ? functions[method](textarea) : null;
+        $.fn.gami = function (method, offset) {
+            var area = getNativeArea(this);
+
+            if (area) {
+                // Reset textarea cache
+                area.text = area.pos = null;
+
+                // Handle optional offset parameter
+                if (offset) area.pos = pos(area) + offset
+
+                return functions[method](area);
+            }
         };
     }
 
@@ -361,7 +380,8 @@
     function getTextHeight(text, copyDiv) {
         text = text.replace('\n', '<br>');
 
-        // Handle cases where cursor is at start of line
+        // Handle cases where cursor is at start of line:
+        // div won't expand for a blank line, so add period
         if (!text || /<br>\W*$/.test(text)) text += '.';
 
         copyDiv.innerHTML = text;
@@ -369,7 +389,7 @@
     }
 
     function getTextLength(text, copyDiv) {
-        copyDiv.innerHTML = text;
+        copyDiv.innerHTML = text.replace(/ /g, '&nbsp;');
         return getWidth(copyDiv);
     }
 
