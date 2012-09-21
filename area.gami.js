@@ -146,13 +146,7 @@
           , spaces = line.match(space)
           , i = 0;
 
-        console.log(pos);
-        console.log(line);
-
         line = '';
-
-
-        console.log(words);
 
         do {
             word  = words[i];
@@ -182,7 +176,7 @@
     }
 
     function XY(area, pos) { return { x: X(area, pos),
-                                      y: 20 }}//Y(area) }; }
+                                      y: Y(area) }; }
 
     function lineXY(area)    { return XY(area, 'lineStart'); }
     function lineEndXY(area) { return XY(area, 'lineEnd');   }
@@ -378,13 +372,14 @@
     }
 
     function getTextHeight(text, copyDiv) {
-        text = text.replace('\n', '<br>');
 
-        // Handle cases where cursor is at start of line:
-        // div won't expand for a blank line, so add period
-        if (!text || /<br>\W*$/.test(text)) text += '.';
+        // Handle HTML ignoring blank lines (add a period to them)
+        text = text.replace(/\n/g,               '<br>'
+                  ).replace(/^\W*<br>/,         '.<br>'
+                  ).replace(/<br>\W*<br>/g, '<br>.<br>'
+                  ).replace(/<br>\W*$/,     '<br>.');
 
-        copyDiv.innerHTML = text;
+        copyDiv.innerHTML = text || '.'; // Handle cursor at start
         return copyDiv.offsetHeight;
     }
 
