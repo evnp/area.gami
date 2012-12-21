@@ -9,6 +9,10 @@
     function before(area) { return text(area).substring(0, pos(area)); }
     function after(area)  { return text(area).substring(   pos(area)); }
 
+    // Text before/after word
+    function beforeWord(area) { return text(area).substring(0, wordStart(area)); }
+    function afterWord(area)  { return text(area).substring(     wordEnd(area)); }
+
 // Lines
     function lines(area)    { return toLines(text(area)); }
     function numLines(area) { return lines(area).length;  }
@@ -98,14 +102,14 @@
     // Passes position
     function wordStart(area) {
         area.pos = area.pos || pos(area);
-        return pos - wordPos(area);
+        return area.pos - wordPos(area);
     }
 
     // Index in text where word ends
     // Passes position
     function wordEnd(area) {
         area.pos = area.pos || pos(area);
-        return pos + wordDist(area);
+        return area.pos + wordDist(area);
     }
 
     // Index in line where word starts
@@ -184,8 +188,17 @@
     function wordXY(area)    { return XY(area, 'wordStart'); }
     function wordEndXY(area) { return XY(area, 'wordEnd');   }
 
+// Text Insertion
+    function insert(area, text) {
+        area.value = before(area) + text + after(area);
+    }
 
-/* -- Utility Functions --- */
+    function replaceWord(area, text) {
+        area.value = beforeWord(area) + text + afterWord(area);
+    }
+
+
+/* -- Helper Functions --- */
 
     // Split into lines
     function toLines(text) {
@@ -197,13 +210,8 @@
         return text.split(/\W+/);
     }
 
-    // Split, excluding the last entry if it is empty
-    function separate(text, on) {
-        return (text = text.split(on)).last() ? text : text.allButLast();
-    }
-
-    Array.prototype.first = function() { return this[0]; };
-    Array.prototype.last  = function() { return this[this.length - 1]; };
+    Array.prototype.first       = function() { return this[0]; };
+    Array.prototype.last        = function() { return this[this.length - 1]; };
     Array.prototype.allButFirst = function() { return this.slice(1); };
     Array.prototype.allButLast  = function() { return this.slice(0, -1) };
 
@@ -261,21 +269,31 @@
             lineXY:    lineXY,
             lineEndXY: lineEndXY,
             wordXY:    wordXY,
-            wordEndXY: wordEndXY
+            wordEndXY: wordEndXY,
+
+            insert:      insert,
+            replaceWord: replaceWord
         };
 
         // Add gami object to jQuery
-        $.fn.gami = function (method, offset) {
-            var area = getNativeArea(this);
+        $.fn.gami = function () {
+            var area = getNativeArea(this)
+              , func = functions[arguments[0]];
 
-            if (area) {
+            if (area && func) {
+                var offset, args = [area], arg, i = 1;
+
+                // Set up gami function arguments
+                while (arg = arguments[i++])
+                    typeof arg === 'number' ? offset = arg : args.push(arg);
+
                 // Reset textarea cache
                 area.text = area.pos = null;
 
                 // Handle optional offset parameter
-                if (offset) area.pos = pos(area) + offset
+                if (offset) area.pos = pos(area) + offset;
 
-                return functions[method](area);
+                return func.apply(this, args);
             }
         };
     }
